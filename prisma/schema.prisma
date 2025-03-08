@@ -1,0 +1,38 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  isResettingPassword Boolean @default(false)
+  resetPasswordToken String?   @unique
+
+  // Relation avec Attendance (un utilisateur peut avoir plusieurs pointages)
+  attendances Attendance[]
+}
+
+model Attendance {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clockIn   DateTime
+  clockOut  DateTime?
+  latitude  Float?  // Optionnel pour éviter l'erreur de migration
+  longitude Float?  // Optionnel pour éviter l'erreur de migration
+  location  String? // Nom du lieu (optionnel)
+  createdAt DateTime @default(now())
+}
