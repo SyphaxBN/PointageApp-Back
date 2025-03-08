@@ -1,29 +1,49 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, Request, UseGuards, Get } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('attendance')
-@UseGuards(JwtAuthGuard) // Protéger les routes avec JWT
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
-  // Pointer l'arrivée
-  @Post('clock-in')
+  // 📌 Pointer l'arrivée
   @UseGuards(JwtAuthGuard)
-  async clockIn(@Request() req, @Body() { location }: { location: string }) {
-  console.log('Utilisateur authentifié :', req.user);
-  return this.attendanceService.clockIn(req.user.userId, location);
-}
-
-  // Pointer le départ
-  @Post('clock-out')
-  async clockOut(@Request() req) {
-    return this.attendanceService.clockOut(req.user.userId);
+  @Post('clock-in')
+  async clockIn(
+    @Request() req,
+    @Body() { latitude, longitude }: { latitude: number; longitude: number }
+  ) {
+    return this.attendanceService.clockIn(req.user.userId, latitude, longitude);
   }
 
-  // Récupérer l'historique des pointages
+  // 📌 Pointer le départ
+  @UseGuards(JwtAuthGuard)
+  @Post('clock-out')
+  async clockOut(
+    @Request() req,
+    @Body() { latitude, longitude }: { latitude: number; longitude: number }
+  ) {
+    return this.attendanceService.clockOut(req.user.userId, latitude, longitude);
+  }
+
+  // 📌 Récupérer l'historique des pointages d'un utilisateur
+  @UseGuards(JwtAuthGuard)
   @Get('history')
   async getUserAttendance(@Request() req) {
     return this.attendanceService.getUserAttendance(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('location')
+  async createLocation(@Body() data: { name: string; latitude: number; longitude: number; radius: number }) {
+   return this.attendanceService.createLocation(data.name, data.latitude, data.longitude, data.radius);
+ }
+
+
+  // 📌 Récupérer la liste des lieux autorisés pour pointer
+  @UseGuards(JwtAuthGuard)
+  @Get('locations')
+  async getLocations() {
+    return this.attendanceService.getLocations();
   }
 }
