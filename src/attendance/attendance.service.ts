@@ -154,5 +154,12 @@ export class AttendanceService {
           createdAt: a.createdAt ? this.formatDate(a.createdAt) : 'Date inconnue',
         }))
       );
-  }  
+  } 
+  
+  async clearUserHistory(userId: string): Promise<{ message: string }> {
+    await this.prisma.attendance.deleteMany({
+      where: { userId },
+    });
+    return { message: 'Historique supprimé avec succès' };
+  }
 }

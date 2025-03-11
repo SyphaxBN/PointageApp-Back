@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Request, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Body, Request, UseGuards, Get, Delete, Req } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -32,6 +32,11 @@ export class AttendanceController {
   async getUserAttendance(@Request() req) {
     return this.attendanceService.getUserAttendance(req.user.userId);
   }
+  @UseGuards(JwtAuthGuard)
+  @Delete('history')
+  async clearHistory(@Request() req) {
+    return this.attendanceService.clearUserHistory(req.user.userId);
+}
 
   @UseGuards(JwtAuthGuard)
   @Post('location')
