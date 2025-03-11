@@ -144,15 +144,15 @@ export class AttendanceService {
       .then((attendances) =>
         attendances.map((a) => ({
           id: a.id,
-          name: a.user.name,
-          email: a.user.email,
-          clockIn: this.formatDate(a.clockIn),
-          clockOut: this.formatDate(a.clockOut),
-          location: a.location?.name || 'Hors zone',
+          name: a.user?.name ?? 'Employé inconnu',
+          email: a.user?.email ?? 'Email inconnu',
+          clockIn: a.clockIn ? this.formatDate(a.clockIn) : 'Heure inconnue',
+          clockOut: a.clockOut ? this.formatDate(a.clockOut) : 'Non renseigné',
+          location: a.location?.name ?? 'Hors zone',
           latitude: a.latitude,
           longitude: a.longitude,
-          createdAt: this.formatDate(a.createdAt),
+          createdAt: a.createdAt ? this.formatDate(a.createdAt) : 'Date inconnue',
         }))
       );
-  }
+  }  
 }
