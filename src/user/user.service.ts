@@ -15,19 +15,32 @@ export class UserService {
         return users;
         }
 
-        async getUser({ userId }: { userId: string }) {
-          console.log("📌 Recherche utilisateur avec ID :", userId);
-          const user = await this.prisma.user.findUnique({
-            where: { 
-              id: userId,
-             },
-            select: {
-              id: true,
-              email: true,
-              name: true,
-            },
-          });
-          console.log("🔍 Résultat trouvé :", user);
-            return user;
-            }
+    async getUser({ userId }: { userId: string }) {
+      console.log("📌 Recherche utilisateur avec ID :", userId);
+      const user = await this.prisma.user.findUnique({
+        where: { 
+          id: userId,
+          },
+        select: {
+           id: true,
+           email: true,
+           name: true,
+         },
+       });
+       console.log("🔍 Résultat trouvé :", user);
+         return user;
+         }
+
+    async deleteUser(userId: string) {
+         const user = await this.prisma.user.findUnique({ where: { id: userId } });
+            
+           if (!user) {
+             throw new Error("Utilisateur non trouvé");
+           }
+            
+           await this.prisma.user.delete({ where: { id: userId } });
+            
+          return { message: "Utilisateur supprimé avec succès" };
+         }
+            
 }

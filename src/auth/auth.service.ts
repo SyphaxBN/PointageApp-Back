@@ -8,6 +8,7 @@ import { LogUserDto } from './dto/login-user.dto';
 import { MailerService } from 'src/mailer.service';
 import { createId } from '@paralleldrive/cuid2';
 import { ResetUserPasswordDto } from './dto/reset-user-password';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -39,7 +40,10 @@ export class AuthService {
         }
 
         // Authentification réussie, générez le token
-        const token = this.authenticateUser ({ userId: existingUser .id });
+        const token = this.authenticateUser ({ 
+          userId: existingUser .id,
+          role: existingUser.role,  
+        });
 
         // Renvoie une réponse avec le token et d'autres informations si nécessaire
         return {
@@ -51,6 +55,7 @@ export class AuthService {
                 id: existingUser .id,
                 email: existingUser .email,
                 name: existingUser .name,
+                role: existingUser.role,
             },
         };
     } catch (error) {
@@ -81,6 +86,7 @@ export class AuthService {
           email,
           name,
           password: hashedPassword,
+          role: 'USER',  // Ajout du rôle USER par défaut
         },
       });
 
@@ -89,7 +95,10 @@ export class AuthService {
         recipient: email,
       });
 
-      return this.authenticateUser({ userId: createdUser.id });
+      return this.authenticateUser({ 
+        userId: createdUser.id,
+        role: createdUser.role, 
+      });
     } catch (error) {
       return {
         error: true,
@@ -112,12 +121,12 @@ export class AuthService {
     return await compare(password, hashedPassword);
   }
 
-  private authenticateUser({ userId }: UserPayload) {
-    const payload: UserPayload = { userId };
+  private authenticateUser({ userId, role }: UserPayload) {
+    const payload: UserPayload = { userId, role };
     return {
       access_token: this.jwtService.sign(payload),
     };
-  }
+}
 
   async resetUserPasswordRequest({ email }: { email: string; }) {
     try {
@@ -234,4 +243,43 @@ export class AuthService {
     }
   }
 
+  async promoteToAdmin({ userId }: { userId: string }) {
+    try {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+  
+      if (!user) {
+        throw new Error("L'utilisateur n'existe pas.");
+      }
+  
+      if (user.role === 'ADMIN') {
+        throw new Error("L'utilisateur est déjà administrateur.");
+      }
+  
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: Role.ADMIN },
+      });
+  
+      return { error: false, message: "Utilisateur promu en administrateur avec succès." };
+    } catch (error) {
+      return { error: true, message: error.message };
+    }
+  }
+
+  async demoteFromAdmin({ userId }: { userId: string }) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('Utilisateur non trouvé');
+  
+    if (user.role !== 'ADMIN') {
+      throw new Error('Cet utilisateur n’est pas admin');
+    }
+  
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { role: 'USER' },
+    });
+  
+    return { message: `Le rôle de l'utilisateur a été changé en USER.` };
+  }
+  
 }

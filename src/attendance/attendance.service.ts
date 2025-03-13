@@ -130,11 +130,33 @@ export class AttendanceService {
     };
   }
 
-  // Récupérer l'historique des pointages d'un utilisateur
-  async getUserAttendance(userId: string) {
+  // 📌 Récupérer l'historique des pointages (tous les employés, avec un filtre par date)
+  async getUserAttendance(date?: string) {
+    let filter: any = {}; 
+  
+    if (date) {
+      // Vérifie si la date est bien au format YYYY-MM-DD avant conversion
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        throw new BadRequestException('Format de date invalide. Utilisez YYYY-MM-DD.');
+      }
+  
+      const parsedDate = new Date(date + 'T00:00:00.000Z'); // Assurer une conversion UTC propre
+      if (isNaN(parsedDate.getTime())) {
+        throw new BadRequestException('Date non valide.');
+      }
+  
+      // Définir le début et la fin de la journée
+      const startOfDay = new Date(parsedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(parsedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+  
+      filter.clockIn = { gte: startOfDay, lte: endOfDay };
+    }
+  
     return this.prisma.attendance
       .findMany({
-        where: { userId },
+        where: filter,
         orderBy: { clockIn: 'desc' },
         include: {
           user: { select: { name: true, email: true } },
@@ -154,12 +176,27 @@ export class AttendanceService {
           createdAt: a.createdAt ? this.formatDate(a.createdAt) : 'Date inconnue',
         }))
       );
-  } 
+  }
+
+  async clearUserHistory(userId: string) {
+    // Vérifie que l'utilisateur existe avant de supprimer son historique
+    const userExists = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!userExists) {
+      throw new NotFoundException("Utilisateur introuvable.");
+    }
   
-  async clearUserHistory(userId: string): Promise<{ message: string }> {
+    // Supprime tous les pointages de cet utilisateur
     await this.prisma.attendance.deleteMany({
       where: { userId },
     });
-    return { message: 'Historique supprimé avec succès' };
+  
+    return { message: "L'historique des pointages de l'utilisateur a été supprimé avec succès." };
   }
+
+  // 📌 Supprimer tout l'historique des pointages
+  async clearAllHistory() {
+    await this.prisma.attendance.deleteMany({});
+    return { message: "Tous les pointages ont été supprimés avec succès." };
+}
+
 }
