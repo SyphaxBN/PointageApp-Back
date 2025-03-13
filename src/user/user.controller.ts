@@ -8,17 +8,23 @@ import { Roles } from 'src/auth/roles.decorator';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  // 📌 Récupérer tous les utilisateurs (réservé aux Admins)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Get()
   getUsers() {
     return this.userService.getUsers();
   }
 
+  // 📌 Récupérer un utilisateur par ID (réservé aux Admins)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Get('/:userId')
   getUser(@Param('userId') userId: string) {
     return this.userService.getUser({ userId });
   }
 
-  // 📌 Suppression d'un utilisateur (réservé aux Admins)
+  // 📌 Supprimer un utilisateur (réservé aux Admins)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Delete('/:userId')
