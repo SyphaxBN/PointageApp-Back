@@ -154,28 +154,20 @@ export class AttendanceService {
       filter.clockIn = { gte: startOfDay, lte: endOfDay };
     }
   
-    return this.prisma.attendance
-      .findMany({
+    return this.prisma.user.findMany
+    ({
+      include: { 
+        attendances: {
         where: filter,
         orderBy: { clockIn: 'desc' },
-        include: {
-          user: { select: { name: true, email: true } },
-          location: { select: { name: true } },
-        },
-      })
-      .then((attendances) =>
-        attendances.map((a) => ({
-          id: a.id,
-          name: a.user?.name ?? 'Employé inconnu',
-          email: a.user?.email ?? 'Email inconnu',
-          clockIn: a.clockIn ? this.formatDate(a.clockIn) : 'Heure inconnue',
-          clockOut: a.clockOut ? this.formatDate(a.clockOut) : 'Non renseigné',
-          location: a.location?.name ?? 'Hors zone',
-          latitude: a.latitude,
-          longitude: a.longitude,
-          createdAt: a.createdAt ? this.formatDate(a.createdAt) : 'Date inconnue',
-        }))
-      );
+      } },
+      omit: { 
+        password: true, 
+        resetPasswordToken: true,
+        isResettingPassword: true,
+      },
+    });
+
   }
 
   async clearUserHistory(userId: string) {
