@@ -128,50 +128,58 @@ export class AuthService {
     };
 }
 
-  async resetUserPasswordRequest({ email }: { email: string; }) {
-    try {
+async resetUserPasswordRequest({ email }: { email: string; }) {
+  try {
       const existingUser = await this.prisma.user.findUnique({
-        where: { email },
+          where: { email },
       });
 
       if (!existingUser) {
-        throw new Error("L'utilisateur n'existe pas.");
+          throw new Error("L'utilisateur n'existe pas.");
       }
 
-      if (existingUser.isResettingPassword === true) {
-        throw new Error("Une demande de réinitialisation de mot de passe est déjà en cours.");
+      let message = "Veuillez consulter vos emails pour réinitialiser votre mot de passe.";
+      let alreadyRequested = false;
+
+      if (existingUser.isResettingPassword) {
+          message = "Une demande de réinitialisation de mot de passe est déjà en cours.";
+          alreadyRequested = true;
+      } else {
+          const createdId = createId();
+          await this.prisma.user.update({
+              where: { email },
+              data: {
+                  isResettingPassword: true,
+                  resetPasswordToken: createdId,
+              },
+          });
+
+          await this.mailerService.sendRequestedPasswordEmail({
+              name: existingUser.name ?? 'User',
+              recipient: existingUser.email,
+              token: createdId,
+          });
       }
 
-      const createdId = createId();
-      await this.prisma.user.update({
-        where: { email },
-        data: {
-          isResettingPassword: true,
-          resetPasswordToken: createdId,
-        },
-      });
-      
-
-      await this.mailerService.sendRequestedPasswordEmail({
-        name: existingUser.name ?? 'User',
-        recipient: existingUser.email,
-        token: createdId,
-      });
-
-      return {
-        error: false,
-        message: 'Veuillez consulter vos emails pour réinitialiser votre mot de passe.',
+      // Renvoie immédiatement le message
+      const response = {
+          error: false,
+          message,
       };
 
-     // return this.authenticateUser({ userId: existingUser.id });
+      // Si une demande existait déjà, ajoute un délai avant la transition
+      if (alreadyRequested) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
 
-    } catch (error) {
+      return response;
+  } catch (error) {
       return {
-        error: true,
-        message: error.message,
+          error: true,
+          message: error.message,
       };
-    }
   }
+}
 
   async verifyResetPasswordToken({ token }: { token: string; }) {
     try {
