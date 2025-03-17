@@ -189,6 +189,32 @@ export class AttendanceService {
   async clearAllHistory() {
     await this.prisma.attendance.deleteMany({});
     return { message: "Tous les pointages ont été supprimés avec succès." };
-}
+ }
+
+  // 📌 Récupérer le dernier pointage de l'utilisateur connecté
+  async getLastAttendance(userId: string) {
+    const lastAttendance = await this.prisma.attendance.findFirst({
+      where: { userId },
+      orderBy: { clockIn: 'desc' },
+      include: { location: true },
+    });
+  
+    console.log("🔵 lastAttendance depuis DB:", lastAttendance); // Debug
+  
+    if (!lastAttendance) {
+      console.log("⚠️ Aucun pointage trouvé pour userId:", userId);
+      throw new NotFoundException("Aucun pointage trouvé.");
+    }
+  
+    return {
+      id: lastAttendance.id,
+      clockIn: this.formatDate(lastAttendance.clockIn),
+      clockOut: this.formatDate(lastAttendance.clockOut),
+      location: lastAttendance.location?.name || 'Hors zone',
+      latitude: lastAttendance.latitude,
+      longitude: lastAttendance.longitude,
+    };
+  }
+  
 
 }

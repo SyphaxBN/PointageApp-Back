@@ -71,4 +71,13 @@ export class AttendanceController {
   async getLocations() {
     return this.attendanceService.getLocations();
   }
+
+  // 📌 Récupérer le dernier pointage de l'utilisateur connecté
+@UseGuards(JwtAuthGuard)
+@Get("last")
+async getLastAttendance(@Request() req) {
+    console.log("📥 Demande de dernier pointage pour userId:", req.user.id);
+    return this.attendanceService.getLastAttendance(req.user.id);
+}
+
 }
