@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Request, UseGuards, Get, Delete, Req, Query } from '@nestjs/common';
+import { Controller, Post, Body, Request, UseGuards, Get, Delete, Req, Query, Param } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
@@ -71,6 +71,14 @@ export class AttendanceController {
   async getLocations() {
     return this.attendanceService.getLocations();
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
+@Delete('locations/:locationId')
+async deleteLocation(@Param('locationId') locationId: string) {
+  return this.attendanceService.deleteLocation(locationId);
+}
+
 
   // 📌 Récupérer le dernier pointage de l'utilisateur connecté
 @UseGuards(JwtAuthGuard)
