@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
@@ -6,25 +10,32 @@ export class AttendanceService {
   constructor(private prisma: PrismaService) {}
 
   // Formater une date et une heure séparément
-private formatDate(date: Date | null): { date: string | null, time: string | null } {
-  if (!date) return { date: null, time: null };
+  private formatDate(date: Date | null): {
+    date: string | null;
+    time: string | null;
+  } {
+    if (!date) return { date: null, time: null };
 
-  return {
-    date: date.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }),
-    time: date.toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-  };
-}
-
+    return {
+      date: date.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }),
+      time: date.toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    };
+  }
 
   // 📌 Ajouter des lieux
-  async createLocation(name: string, latitude: number, longitude: number, radius: number) {
+  async createLocation(
+    name: string,
+    latitude: number,
+    longitude: number,
+    radius: number,
+  ) {
     return this.prisma.location.create({
       data: { name, latitude, longitude, radius },
     });
@@ -41,15 +52,48 @@ private formatDate(date: Date | null): { date: string | null, time: string | nul
       await this.prisma.location.delete({
         where: { id: locationId },
       });
-      return { message: "Lieu supprimé avec succès." };
+      return { message: 'Lieu supprimé avec succès.' };
     } catch (error) {
-      throw new NotFoundException("Lieu non trouvé ou déjà supprimé.");
+      throw new NotFoundException('Lieu non trouvé ou déjà supprimé.');
     }
   }
 
+  // 📌 Modifier un lieu de pointage
+  async updateLocation(
+    locationId: string,
+    data: {
+      name?: string;
+      latitude?: number;
+      longitude?: number;
+      radius?: number;
+    },
+  ) {
+    const location = await this.prisma.location.findUnique({
+      where: { id: locationId },
+    });
+
+    if (!location) {
+      throw new NotFoundException('Lieu non trouvé.');
+    }
+
+    const updatedLocation = await this.prisma.location.update({
+      where: { id: locationId },
+      data,
+    });
+
+    return {
+      message: 'Lieu mis à jour avec succès.',
+      updatedLocation,
+    };
+  }
 
   // Calculer la distance entre deux points GPS (Haversine)
-  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  private calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
     if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity; // Éviter les erreurs si les valeurs sont nulles
 
     const R = 6371e3; // Rayon de la Terre en mètres
@@ -67,11 +111,19 @@ private formatDate(date: Date | null): { date: string | null, time: string | nul
   }
 
   // Vérifier si une position est valide pour pointer
-  private async isValidLocation(latitude: number, longitude: number): Promise<{ id: string; name: string } | null> {
+  private async isValidLocation(
+    latitude: number,
+    longitude: number,
+  ): Promise<{ id: string; name: string } | null> {
     const locations = await this.prisma.location.findMany();
 
     for (const location of locations) {
-      const distance = this.calculateDistance(latitude, longitude, location.latitude, location.longitude);
+      const distance = this.calculateDistance(
+        latitude,
+        longitude,
+        location.latitude,
+        location.longitude,
+      );
       if (distance <= location.radius) {
         return { id: location.id, name: location.name };
       }
@@ -81,20 +133,28 @@ private formatDate(date: Date | null): { date: string | null, time: string | nul
   }
 
   // Pointer l'arrivée
-  async clockIn(userId: string, latitude: number, longitude: number): Promise<any> {
+  async clockIn(
+    userId: string,
+    latitude: number,
+    longitude: number,
+  ): Promise<any> {
     const lastAttendance = await this.prisma.attendance.findFirst({
       where: { userId, clockOut: null },
     });
-  
+
     if (lastAttendance) {
-      throw new BadRequestException('Vous avez déjà pointé une arrivée sans enregistrer un départ.');
+      throw new BadRequestException(
+        'Vous avez déjà pointé une arrivée sans enregistrer un départ.',
+      );
     }
-  
+
     const validLocation = await this.isValidLocation(latitude, longitude);
     if (!validLocation) {
-      throw new BadRequestException("Vous êtes trop loin d'un lieu autorisé pour pointer.");
+      throw new BadRequestException(
+        "Vous êtes trop loin d'un lieu autorisé pour pointer.",
+      );
     }
-  
+
     const attendance = await this.prisma.attendance.create({
       data: {
         userId,
@@ -105,9 +165,9 @@ private formatDate(date: Date | null): { date: string | null, time: string | nul
       },
       include: { location: true },
     });
-  
+
     const formattedClockIn = this.formatDate(attendance.clockIn);
-  
+
     return {
       id: attendance.id,
       userId: attendance.userId,
@@ -118,32 +178,39 @@ private formatDate(date: Date | null): { date: string | null, time: string | nul
       longitude: attendance.longitude,
     };
   }
-  
 
   // Pointer le départ
-  async clockOut(userId: string, latitude: number, longitude: number): Promise<any> {
+  async clockOut(
+    userId: string,
+    latitude: number,
+    longitude: number,
+  ): Promise<any> {
     const attendance = await this.prisma.attendance.findFirst({
       where: { userId, clockOut: null },
     });
-  
+
     if (!attendance) {
-      throw new NotFoundException("Aucune arrivée enregistrée, vous ne pouvez pas pointer votre départ.");
+      throw new NotFoundException(
+        'Aucune arrivée enregistrée, vous ne pouvez pas pointer votre départ.',
+      );
     }
-  
+
     const validLocation = await this.isValidLocation(latitude, longitude);
     if (!validLocation) {
-      throw new BadRequestException("Vous êtes trop loin d'un lieu autorisé pour pointer votre départ.");
+      throw new BadRequestException(
+        "Vous êtes trop loin d'un lieu autorisé pour pointer votre départ.",
+      );
     }
-  
+
     const updatedAttendance = await this.prisma.attendance.update({
       where: { id: attendance.id },
       data: { clockOut: new Date(), latitude, longitude },
       include: { location: true },
     });
-  
+
     const formattedClockIn = this.formatDate(updatedAttendance.clockIn);
     const formattedClockOut = this.formatDate(updatedAttendance.clockOut);
-  
+
     return {
       id: updatedAttendance.id,
       userId: updatedAttendance.userId,
@@ -156,76 +223,86 @@ private formatDate(date: Date | null): { date: string | null, time: string | nul
       longitude: updatedAttendance.longitude,
     };
   }
-  
 
   async getUserAttendance(date?: string) {
-    let filter: any = {}; 
-  
+    let filter: any = {};
+
     if (date) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        throw new BadRequestException('Format de date invalide. Utilisez YYYY-MM-DD.');
+        throw new BadRequestException(
+          'Format de date invalide. Utilisez YYYY-MM-DD.',
+        );
       }
-  
-      const parsedDate = new Date(date + 'T00:00:00.000Z'); 
+
+      const parsedDate = new Date(date + 'T00:00:00.000Z');
       if (isNaN(parsedDate.getTime())) {
         throw new BadRequestException('Date non valide.');
       }
-  
+
       const startOfDay = new Date(parsedDate);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(parsedDate);
       endOfDay.setHours(23, 59, 59, 999);
-  
+
       filter.clockIn = { gte: startOfDay, lte: endOfDay };
     }
-  
+
     const users = await this.prisma.user.findMany({
-      include: { 
+      include: {
         attendances: {
           where: filter,
           orderBy: { clockIn: 'desc' },
-        }
+        },
       },
-      omit: { 
-        password: true, 
+      omit: {
+        password: true,
         resetPasswordToken: true,
         isResettingPassword: true,
       },
     });
-  
+
     // 🔹 Transformation des données pour séparer date et heure sans secondes
-    return users.map(user => ({
+    return users.map((user) => ({
       ...user,
-      attendances: user.attendances.map(attendance => ({
+      attendances: user.attendances.map((attendance) => ({
         clockInDate: attendance.clockIn.toISOString().split('T')[0], // YYYY-MM-DD
         clockInTime: attendance.clockIn.toISOString().split('T')[1].slice(0, 5), // HH:MM
-        clockOutDate: attendance.clockOut ? attendance.clockOut.toISOString().split('T')[0] : null, 
-        clockOutTime: attendance.clockOut ? attendance.clockOut.toISOString().split('T')[1].slice(0, 5) : null, // HH:MM
+        clockOutDate: attendance.clockOut
+          ? attendance.clockOut.toISOString().split('T')[0]
+          : null,
+        clockOutTime: attendance.clockOut
+          ? attendance.clockOut.toISOString().split('T')[1].slice(0, 5)
+          : null, // HH:MM
       })),
     }));
   }
-  
+
   // 📌 Supprimer l'historique des pointages d'un utilisateur
   async clearUserHistory(userId: string) {
     // Vérifie que l'utilisateur existe avant de supprimer son historique
-    const userExists = await this.prisma.user.findUnique({ where: { id: userId } });
+    const userExists = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
     if (!userExists) {
-      throw new NotFoundException("Utilisateur introuvable.");
+      throw new NotFoundException('Utilisateur introuvable.');
     }
-  
+
     // Supprime tous les pointages de cet utilisateur
     await this.prisma.attendance.deleteMany({
       where: { userId },
     });
-  
-    return { message: "L'historique des pointages de l'utilisateur a été supprimé avec succès." };
+
+    return {
+      message:
+        "L'historique des pointages de l'utilisateur a été supprimé avec succès.",
+    };
   }
 
   // 📌 Supprimer tout l'historique des pointages
   async clearAllHistory() {
     await this.prisma.attendance.deleteMany({});
-    return { message: "Tous les pointages ont été supprimés avec succès." };
- }
+    return { message: 'Tous les pointages ont été supprimés avec succès.' };
+  }
 
   // 📌 Récupérer le dernier pointage de l'utilisateur connecté
   async getLastAttendance(userId: string) {
@@ -234,14 +311,14 @@ private formatDate(date: Date | null): { date: string | null, time: string | nul
       orderBy: { clockIn: 'desc' },
       include: { location: true },
     });
-  
+
     if (!lastAttendance) {
-      throw new NotFoundException("Aucun pointage trouvé.");
+      throw new NotFoundException('Aucun pointage trouvé.');
     }
-  
+
     const formattedClockIn = this.formatDate(lastAttendance.clockIn);
     const formattedClockOut = this.formatDate(lastAttendance.clockOut);
-  
+
     return {
       id: lastAttendance.id,
       clockInDate: formattedClockIn.date,
@@ -253,5 +330,4 @@ private formatDate(date: Date | null): { date: string | null, time: string | nul
       longitude: lastAttendance.longitude,
     };
   }
-  
 }

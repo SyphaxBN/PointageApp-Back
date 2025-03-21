@@ -1,4 +1,16 @@
-import { Controller, Post, Body, Request, UseGuards, Get, Delete, Req, Query, Param } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Request,
+  UseGuards,
+  Get,
+  Delete,
+  Req,
+  Query,
+  Param,
+  Patch,
+} from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
@@ -13,7 +25,7 @@ export class AttendanceController {
   @Post('clock-in')
   async clockIn(
     @Request() req,
-    @Body() { latitude, longitude }: { latitude: number; longitude: number }
+    @Body() { latitude, longitude }: { latitude: number; longitude: number },
   ) {
     return this.attendanceService.clockIn(req.user.userId, latitude, longitude);
   }
@@ -23,9 +35,13 @@ export class AttendanceController {
   @Post('clock-out')
   async clockOut(
     @Request() req,
-    @Body() { latitude, longitude }: { latitude: number; longitude: number }
+    @Body() { latitude, longitude }: { latitude: number; longitude: number },
   ) {
-    return this.attendanceService.clockOut(req.user.userId, latitude, longitude);
+    return this.attendanceService.clockOut(
+      req.user.userId,
+      latitude,
+      longitude,
+    );
   }
 
   // 📌 Récupérer l'historique des pointages avec un filtre par date (réservé aux Admins)
@@ -42,7 +58,9 @@ export class AttendanceController {
   @Delete('history')
   async clearHistory(@Query('userId') userId?: string) {
     if (!userId) {
-      throw new Error("L'ID de l'utilisateur est requis pour supprimer son historique.");
+      throw new Error(
+        "L'ID de l'utilisateur est requis pour supprimer son historique.",
+      );
     }
     return this.attendanceService.clearUserHistory(userId);
   }
@@ -55,37 +73,64 @@ export class AttendanceController {
     return this.attendanceService.clearAllHistory();
   }
 
-
   // 📌 Ajouter des lieux autorisés pour pointer par l'Admin
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN') 
+  @Roles('ADMIN')
   @Post('location')
-  async createLocation(@Body() data: { name: string; latitude: number; longitude: number; radius: number }) {
-   return this.attendanceService.createLocation(data.name, data.latitude, data.longitude, data.radius);
+  async createLocation(
+    @Body()
+    data: {
+      name: string;
+      latitude: number;
+      longitude: number;
+      radius: number;
+    },
+  ) {
+    return this.attendanceService.createLocation(
+      data.name,
+      data.latitude,
+      data.longitude,
+      data.radius,
+    );
   }
 
   // 📌 Récupérer la liste des lieux autorisés pour pointer par l'Admin
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN') 
+  @Roles('ADMIN')
   @Get('locations')
   async getLocations() {
     return this.attendanceService.getLocations();
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
-@Delete('locations/:locationId')
-async deleteLocation(@Param('locationId') locationId: string) {
-  return this.attendanceService.deleteLocation(locationId);
-}
+  @Roles('ADMIN')
+  @Delete('locations/:locationId')
+  async deleteLocation(@Param('locationId') locationId: string) {
+    return this.attendanceService.deleteLocation(locationId);
+  }
 
+  // 📌 Modifier un lieu de pointage (réservé aux Admins)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Patch('locations/:locationId')
+  async updateLocation(
+    @Param('locationId') locationId: string,
+    @Body()
+    data: {
+      name?: string;
+      latitude?: number;
+      longitude?: number;
+      radius?: number;
+    },
+  ) {
+    return this.attendanceService.updateLocation(locationId, data);
+  }
 
   // 📌 Récupérer le dernier pointage de l'utilisateur connecté
-@UseGuards(JwtAuthGuard)
-@Get("last")
-async getLastAttendance(@Request() req) {
-    console.log("📥 Demande de dernier pointage pour userId:", req.user.id);
+  @UseGuards(JwtAuthGuard)
+  @Get('last')
+  async getLastAttendance(@Request() req) {
+    console.log('📥 Demande de dernier pointage pour userId:', req.user.id);
     return this.attendanceService.getLastAttendance(req.user.id);
-}
-
+  }
 }
