@@ -13,39 +13,40 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role     Role   @default(USER)  // Ajout du rôle
+  id                  String  @id @default(cuid())
+  email               String  @unique
+  name                String?
+  password            String
+  role                Role    @default(USER) // Ajout du rôle
   isResettingPassword Boolean @default(false)
-  resetPasswordToken String?   @unique
+  resetPasswordToken  String? @unique
+  photo               String? // Champ pour stocker l'URL de la photo de profil
 
   // Relation avec Attendance (un utilisateur peut avoir plusieurs pointages)
   attendances Attendance[]
 }
 
 model Attendance {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   clockIn    DateTime
   clockOut   DateTime?
-  latitude   Float @default(0.0)// Position GPS de l'utilisateur au moment du pointage
-  longitude  Float @default(0.0) // Position GPS de l'utilisateur au moment du pointage
-  locationId String?  @map("location_id") // Référence au lieu validé (optionnel si hors zone)
+  latitude   Float     @default(0.0) // Position GPS de l'utilisateur au moment du pointage
+  longitude  Float     @default(0.0) // Position GPS de l'utilisateur au moment du pointage
+  locationId String?   @map("location_id") // Référence au lieu validé (optionnel si hors zone)
   location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 }
 
 model Location {
-  id         String  @id @default(cuid())
-  name       String  @unique // Nom du lieu (ex: "Siège principal")
-  latitude   Float  // Latitude du lieu
-  longitude  Float  // Longitude du lieu
-  radius     Float  // Rayon de validation en mètres (ex: 10m, 50m, etc.)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String   @unique // Nom du lieu (ex: "Siège principal")
+  latitude  Float // Latitude du lieu
+  longitude Float // Longitude du lieu
+  radius    Float // Rayon de validation en mètres (ex: 10m, 50m, etc.)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relation avec Attendance (un lieu peut avoir plusieurs pointages associés)
   attendances Attendance[]
