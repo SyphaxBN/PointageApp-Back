@@ -31,6 +31,8 @@ export class UserService {
         id: true,
         email: true,
         name: true,
+        role: true,
+        photo: true,
       },
     });
     console.log('🔍 Résultat trouvé :', user);

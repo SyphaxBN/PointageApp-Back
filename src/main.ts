@@ -20,6 +20,8 @@ async function bootstrap() {
     prefix: '/uploads', // Permet d'accéder aux fichiers via /uploads
   });
 
+  app.enableCors(); // Autorise toutes les requêtes CORS
+
   await app.listen(process.env.PORT ?? 8000, '0.0.0.0');
 }
 bootstrap();
