@@ -130,7 +130,7 @@ export class AttendanceController {
   @UseGuards(JwtAuthGuard)
   @Get('last')
   async getLastAttendance(@Request() req) {
-    console.log('📥 Demande de dernier pointage pour userId:', req.user.id);
-    return this.attendanceService.getLastAttendance(req.user.id);
+    console.log('📥 Demande de dernier pointage pour user:', req.user);
+    return this.attendanceService.getLastAttendance(req.user.userId);
   }
 }

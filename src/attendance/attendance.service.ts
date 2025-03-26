@@ -142,16 +142,15 @@ export class AttendanceService {
       where: { userId, clockOut: null },
     });
 
-    if (lastAttendance) {
-      throw new BadRequestException(
-        'Vous avez déjà pointé une arrivée sans enregistrer un départ.',
-      );
-    }
-
     const validLocation = await this.isValidLocation(latitude, longitude);
     if (!validLocation) {
       throw new BadRequestException(
         "Vous êtes trop loin d'un lieu autorisé pour pointer.",
+      );
+    }
+    if (lastAttendance) {
+      throw new BadRequestException(
+        'Vous avez déjà pointé une arrivée sans enregistrer un départ.',
       );
     }
 
@@ -189,16 +188,15 @@ export class AttendanceService {
       where: { userId, clockOut: null },
     });
 
-    if (!attendance) {
-      throw new NotFoundException(
-        'Aucune arrivée enregistrée, vous ne pouvez pas pointer votre départ.',
-      );
-    }
-
     const validLocation = await this.isValidLocation(latitude, longitude);
     if (!validLocation) {
       throw new BadRequestException(
-        "Vous êtes trop loin d'un lieu autorisé pour pointer votre départ.",
+        "Vous êtes trop loin d'un lieu autorisé pour pointer.",
+      );
+    }
+    if (!attendance) {
+      throw new NotFoundException(
+        'Aucune arrivée enregistrée, vous ne pouvez pas pointer votre départ.',
       );
     }
 
@@ -306,8 +304,10 @@ export class AttendanceService {
 
   // 📌 Récupérer le dernier pointage de l'utilisateur connecté
   async getLastAttendance(userId: string) {
+    console.log('🔎 Recherche du dernier pointage pour userId:', userId);
+
     const lastAttendance = await this.prisma.attendance.findFirst({
-      where: { userId },
+      where: { userId }, // 🔥 Vérifie que userId est bien utilisé ici !
       orderBy: { clockIn: 'desc' },
       include: { location: true },
     });
@@ -316,11 +316,14 @@ export class AttendanceService {
       throw new NotFoundException('Aucun pointage trouvé.');
     }
 
+    console.log('✅ Dernier pointage trouvé:', lastAttendance);
+
     const formattedClockIn = this.formatDate(lastAttendance.clockIn);
     const formattedClockOut = this.formatDate(lastAttendance.clockOut);
 
     return {
       id: lastAttendance.id,
+      userId: lastAttendance.userId, // ✅ Ajout du userId dans la réponse
       clockInDate: formattedClockIn.date,
       clockInTime: formattedClockIn.time,
       clockOutDate: formattedClockOut.date,
