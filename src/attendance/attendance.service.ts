@@ -5,11 +5,22 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
+/**
+ * Service de gestion des présences (pointages)
+ * Gère l'ensemble des opérations liées aux pointages et aux lieux de pointage:
+ * - Pointage d'arrivée/départ
+ * - Gestion des lieux autorisés
+ * - Historique des pointages
+ */
 @Injectable()
 export class AttendanceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {} // Injection du service Prisma
 
-  // Formater une date et une heure séparément
+  /**
+   * Formate une date en séparant date et heure pour l'affichage
+   * @param date - Date à formater
+   * @returns Objet contenant la date et l'heure formatées
+   */
   private formatDate(date: Date | null): {
     date: string | null;
     time: string | null;
@@ -29,7 +40,14 @@ export class AttendanceService {
     };
   }
 
-  // 📌 Ajouter des lieux
+  /**
+   * Crée un nouveau lieu de pointage
+   * @param name - Nom du lieu
+   * @param latitude - Latitude GPS du lieu
+   * @param longitude - Longitude GPS du lieu
+   * @param radius - Rayon en mètres dans lequel le pointage est autorisé
+   * @returns Le lieu créé
+   */
   async createLocation(
     name: string,
     latitude: number,
@@ -41,12 +59,19 @@ export class AttendanceService {
     });
   }
 
-  // 📌 Récupérer la liste des lieux
+  /**
+   * Récupère la liste de tous les lieux de pointage
+   * @returns Liste des lieux de pointage
+   */
   async getLocations() {
     return this.prisma.location.findMany();
   }
 
-  // 📌 Supprimer un lieu par son ID
+  /**
+   * Supprime un lieu de pointage par son ID
+   * @param locationId - ID du lieu à supprimer
+   * @returns Message de confirmation
+   */
   async deleteLocation(locationId: string) {
     try {
       await this.prisma.location.delete({
@@ -58,7 +83,12 @@ export class AttendanceService {
     }
   }
 
-  // 📌 Modifier un lieu de pointage
+  /**
+   * Met à jour les informations d'un lieu de pointage
+   * @param locationId - ID du lieu à modifier
+   * @param data - Nouvelles informations du lieu
+   * @returns Message de confirmation et lieu mis à jour
+   */
   async updateLocation(
     locationId: string,
     data: {
@@ -87,7 +117,14 @@ export class AttendanceService {
     };
   }
 
-  // Calculer la distance entre deux points GPS (Haversine)
+  /**
+   * Calcule la distance en mètres entre deux points GPS (formule de Haversine)
+   * @param lat1 - Latitude du premier point
+   * @param lon1 - Longitude du premier point
+   * @param lat2 - Latitude du deuxième point
+   * @param lon2 - Longitude du deuxième point
+   * @returns Distance en mètres
+   */
   private calculateDistance(
     lat1: number,
     lon1: number,
@@ -110,7 +147,12 @@ export class AttendanceService {
     return R * c; // Distance en mètres
   }
 
-  // Vérifier si une position est valide pour pointer
+  /**
+   * Vérifie si une position est valide pour pointer (dans le rayon d'un lieu autorisé)
+   * @param latitude - Latitude de l'utilisateur
+   * @param longitude - Longitude de l'utilisateur
+   * @returns Informations sur le lieu si position valide, null sinon
+   */
   private async isValidLocation(
     latitude: number,
     longitude: number,
@@ -132,7 +174,13 @@ export class AttendanceService {
     return null;
   }
 
-  // Pointer l'arrivée
+  /**
+   * Enregistre un pointage d'arrivée
+   * @param userId - ID de l'utilisateur
+   * @param latitude - Latitude de l'utilisateur
+   * @param longitude - Longitude de l'utilisateur
+   * @returns Informations sur le pointage créé
+   */
   async clockIn(
     userId: string,
     latitude: number,
@@ -178,7 +226,13 @@ export class AttendanceService {
     };
   }
 
-  // Pointer le départ
+  /**
+   * Enregistre un pointage de départ
+   * @param userId - ID de l'utilisateur
+   * @param latitude - Latitude de l'utilisateur
+   * @param longitude - Longitude de l'utilisateur
+   * @returns Informations sur le pointage mis à jour
+   */
   async clockOut(
     userId: string,
     latitude: number,
@@ -222,6 +276,11 @@ export class AttendanceService {
     };
   }
 
+  /**
+   * Récupère l'historique des pointages de tous les utilisateurs
+   * @param date - Date optionnelle pour filtrer les pointages
+   * @returns Liste des utilisateurs avec leurs pointages
+   */
   async getUserAttendance(date?: string) {
     let filter: any = {};
 
@@ -275,7 +334,11 @@ export class AttendanceService {
     }));
   }
 
-  // 📌 Supprimer l'historique des pointages d'un utilisateur
+  /**
+   * Supprime l'historique des pointages d'un utilisateur
+   * @param userId - ID de l'utilisateur
+   * @returns Message de confirmation
+   */
   async clearUserHistory(userId: string) {
     // Vérifie que l'utilisateur existe avant de supprimer son historique
     const userExists = await this.prisma.user.findUnique({
@@ -296,13 +359,20 @@ export class AttendanceService {
     };
   }
 
-  // 📌 Supprimer tout l'historique des pointages
+  /**
+   * Supprime tout l'historique des pointages de tous les utilisateurs
+   * @returns Message de confirmation
+   */
   async clearAllHistory() {
     await this.prisma.attendance.deleteMany({});
     return { message: 'Tous les pointages ont été supprimés avec succès.' };
   }
 
-  // 📌 Récupérer le dernier pointage de l'utilisateur connecté
+  /**
+   * Récupère le dernier pointage d'un utilisateur
+   * @param userId - ID de l'utilisateur
+   * @returns Informations sur le dernier pointage
+   */
   async getLastAttendance(userId: string) {
     console.log('🔎 Recherche du dernier pointage pour userId:', userId);
 
@@ -323,7 +393,7 @@ export class AttendanceService {
 
     return {
       id: lastAttendance.id,
-      userId: lastAttendance.userId, // ✅ Ajout du userId dans la réponse
+      userId: lastAttendance.userId,
       clockInDate: formattedClockIn.date,
       clockInTime: formattedClockIn.time,
       clockOutDate: formattedClockOut.date,

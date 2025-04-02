@@ -1,23 +1,35 @@
 import * as nodemailer from 'nodemailer';
 import { Injectable } from '@nestjs/common';
 
+/**
+ * Service d'envoi d'emails
+ * Gère l'envoi des emails transactionnels:
+ * - Email de bienvenue après inscription
+ * - Email de réinitialisation de mot de passe
+ */
 @Injectable()
 export class MailerService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
+    // Configuration du transporteur nodemailer pour l'envoi d'emails via Gmail
     this.transporter = nodemailer.createTransport({
       service: 'Gmail',
       host: 'smtp.gmail.com',
       port: 465,
       secure: true,
       auth: {
-        user: process.env.EMAIL_USER, // 💡 Stocke ces valeurs dans un .env
-        pass: process.env.EMAIL_PASS,
+        user: process.env.EMAIL_USER, // Adresse email configurée dans le .env
+        pass: process.env.EMAIL_PASS, // Mot de passe d'application configuré dans le .env
       },
     });
   }
 
+  /**
+   * Envoie un email de bienvenue à un nouvel utilisateur
+   * @param recipient - Adresse email du destinataire
+   * @param name - Nom de l'utilisateur
+   */
   async sendCreatedAccountEmail({
     recipient,
     name,
@@ -40,6 +52,12 @@ export class MailerService {
     }
   }
 
+  /**
+   * Envoie un email de réinitialisation de mot de passe
+   * @param recipient - Adresse email du destinataire
+   * @param name - Nom de l'utilisateur
+   * @param token - Token de réinitialisation
+   */
   async sendRequestedPasswordEmail({
     recipient,
     name,

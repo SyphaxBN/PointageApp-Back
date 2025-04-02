@@ -16,11 +16,26 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 
+/**
+ * Contrôleur de gestion des pointages
+ * Gère les routes API liées aux pointages et aux lieux:
+ * - Endpoints pour les pointages (arrivée/départ)
+ * - Endpoints pour la gestion des lieux
+ * - Endpoints pour l'historique des pointages
+ * Utilise les guards pour protéger les routes et vérifier les rôles
+ */
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
-  // 📌 Pointer l'arrivée
+  /**
+   * Endpoint pour enregistrer un pointage d'arrivée
+   * Route: POST /attendance/clock-in
+   * @param req - Requête contenant les informations de l'utilisateur authentifié
+   * @param location - Coordonnées GPS de l'utilisateur
+   * @returns Informations sur le pointage créé
+   * @requires Authentication
+   */
   @UseGuards(JwtAuthGuard)
   @Post('clock-in')
   async clockIn(
@@ -30,7 +45,14 @@ export class AttendanceController {
     return this.attendanceService.clockIn(req.user.userId, latitude, longitude);
   }
 
-  // 📌 Pointer le départ
+  /**
+   * Endpoint pour enregistrer un pointage de départ
+   * Route: POST /attendance/clock-out
+   * @param req - Requête contenant les informations de l'utilisateur authentifié
+   * @param location - Coordonnées GPS de l'utilisateur
+   * @returns Informations sur le pointage mis à jour
+   * @requires Authentication
+   */
   @UseGuards(JwtAuthGuard)
   @Post('clock-out')
   async clockOut(
@@ -44,7 +66,13 @@ export class AttendanceController {
     );
   }
 
-  // 📌 Récupérer l'historique des pointages avec un filtre par date (réservé aux Admins)
+  /**
+   * Endpoint pour récupérer l'historique des pointages
+   * Route: GET /attendance/history
+   * @param date - Date optionnelle pour filtrer les pointages (format: YYYY-MM-DD)
+   * @returns Liste des utilisateurs avec leurs pointages
+   * @requires Authentication, Role: ADMIN
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Get('history')
@@ -52,7 +80,13 @@ export class AttendanceController {
     return this.attendanceService.getUserAttendance(date);
   }
 
-  // 📌 Supprimer l'historique des pointages d'un utilisateur (réservé aux Admins)
+  /**
+   * Endpoint pour supprimer l'historique des pointages d'un utilisateur
+   * Route: DELETE /attendance/history
+   * @param userId - ID de l'utilisateur
+   * @returns Message de confirmation
+   * @requires Authentication, Role: ADMIN
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Delete('history')
@@ -65,7 +99,12 @@ export class AttendanceController {
     return this.attendanceService.clearUserHistory(userId);
   }
 
-  // 📌 Supprimer tout l'historique des pointages (Nouveau)
+  /**
+   * Endpoint pour supprimer tout l'historique des pointages
+   * Route: DELETE /attendance/history/all
+   * @returns Message de confirmation
+   * @requires Authentication, Role: ADMIN
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Delete('history/all')
@@ -73,7 +112,13 @@ export class AttendanceController {
     return this.attendanceService.clearAllHistory();
   }
 
-  // 📌 Ajouter des lieux autorisés pour pointer par l'Admin
+  /**
+   * Endpoint pour créer un nouveau lieu de pointage
+   * Route: POST /attendance/location
+   * @param data - Informations du lieu (nom, coordonnées, rayon)
+   * @returns Lieu créé
+   * @requires Authentication, Role: ADMIN
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Post('location')
@@ -94,7 +139,12 @@ export class AttendanceController {
     );
   }
 
-  // 📌 Récupérer la liste des lieux autorisés pour pointer par l'Admin
+  /**
+   * Endpoint pour récupérer la liste des lieux de pointage
+   * Route: GET /attendance/locations
+   * @returns Liste des lieux
+   * @requires Authentication, Role: ADMIN
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Get('locations')
@@ -102,6 +152,13 @@ export class AttendanceController {
     return this.attendanceService.getLocations();
   }
 
+  /**
+   * Endpoint pour supprimer un lieu de pointage
+   * Route: DELETE /attendance/locations/:locationId
+   * @param locationId - ID du lieu à supprimer
+   * @returns Message de confirmation
+   * @requires Authentication, Role: ADMIN
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Delete('locations/:locationId')
@@ -109,7 +166,14 @@ export class AttendanceController {
     return this.attendanceService.deleteLocation(locationId);
   }
 
-  // 📌 Modifier un lieu de pointage (réservé aux Admins)
+  /**
+   * Endpoint pour modifier un lieu de pointage
+   * Route: PATCH /attendance/locations/:locationId
+   * @param locationId - ID du lieu à modifier
+   * @param data - Nouvelles informations du lieu
+   * @returns Message de confirmation et lieu mis à jour
+   * @requires Authentication, Role: ADMIN
+   */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch('locations/:locationId')
@@ -126,7 +190,13 @@ export class AttendanceController {
     return this.attendanceService.updateLocation(locationId, data);
   }
 
-  // 📌 Récupérer le dernier pointage de l'utilisateur connecté
+  /**
+   * Endpoint pour récupérer le dernier pointage d'un utilisateur
+   * Route: GET /attendance/last
+   * @param req - Requête contenant les informations de l'utilisateur authentifié
+   * @returns Informations sur le dernier pointage
+   * @requires Authentication
+   */
   @UseGuards(JwtAuthGuard)
   @Get('last')
   async getLastAttendance(@Request() req) {

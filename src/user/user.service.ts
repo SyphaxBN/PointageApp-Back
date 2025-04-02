@@ -7,9 +7,21 @@ import { PrismaService } from 'src/prisma.service';
 import { promises as fs } from 'fs';
 import path from 'path';
 
+/**
+ * Service de gestion des utilisateurs
+ * Gère les opérations CRUD sur les utilisateurs:
+ * - Récupération des utilisateurs
+ * - Suppression des utilisateurs
+ * - Gestion des photos de profil
+ */
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {} // Injection du service Prisma
+
+  /**
+   * Récupère tous les utilisateurs (sans informations sensibles)
+   * @returns Liste des utilisateurs avec leurs informations de base
+   */
   async getUsers() {
     const users = await this.prisma.user.findMany({
       select: {
@@ -21,6 +33,11 @@ export class UserService {
     return users;
   }
 
+  /**
+   * Récupère un utilisateur par son ID
+   * @param userId - ID de l'utilisateur
+   * @returns Informations de l'utilisateur (sans mot de passe)
+   */
   async getUser({ userId }: { userId: string }) {
     console.log('📌 Recherche utilisateur avec ID :', userId);
     const user = await this.prisma.user.findUnique({
@@ -39,6 +56,11 @@ export class UserService {
     return user;
   }
 
+  /**
+   * Supprime un utilisateur et sa photo de profil
+   * @param userId - ID de l'utilisateur à supprimer
+   * @returns Message de confirmation
+   */
   async deleteUser(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
@@ -62,7 +84,12 @@ export class UserService {
     return { message: '✅ Utilisateur supprimé avec succès' };
   }
 
-  // 📌 Met à jour la photo de l'utilisateur
+  /**
+   * Met à jour la photo de profil d'un utilisateur
+   * @param userId - ID de l'utilisateur
+   * @param photoUrl - URL de la nouvelle photo
+   * @returns Utilisateur mis à jour
+   */
   async updatePhoto(userId: string, photoUrl: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
 

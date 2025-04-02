@@ -10,51 +10,66 @@ import { createId } from '@paralleldrive/cuid2';
 import { ResetUserPasswordDto } from './dto/reset-user-password';
 import { Role } from '@prisma/client';
 
+/**
+ * Service d'authentification
+ * Gère l'ensemble des opérations liées à l'authentification des utilisateurs:
+ * - Connexion (login)
+ * - Inscription (register)
+ * - Réinitialisation de mot de passe
+ * - Gestion des rôles (admin/user)
+ */
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService,
-    private readonly mailerService: MailerService,
+    private readonly prisma: PrismaService, // Service Prisma pour les interactions avec la base de données
+    private readonly jwtService: JwtService, // Service JWT pour la génération et vérification des tokens
+    private readonly mailerService: MailerService, // Service d'envoi d'emails
   ) {}
 
+  /**
+   * Authentifie un utilisateur avec son email et mot de passe
+   * @param authBody - Objet contenant l'email et le mot de passe de l'utilisateur
+   * @returns Un objet contenant le token JWT et les informations de l'utilisateur en cas de succès
+   */
   async login({ authBody }: { authBody: LogUserDto }) {
     try {
         const { email, password } = authBody;
 
-        const existingUser  = await this.prisma.user.findUnique({
+        // Recherche de l'utilisateur dans la base de données
+        const existingUser = await this.prisma.user.findUnique({
             where: { email },
         });
 
-        if (!existingUser ) {
+        if (!existingUser) {
             throw new Error("Aucun utilisateur trouvé avec cet email.");
         }
 
+        // Vérification du mot de passe
         const isPasswordValid = await this.isPasswordValid({
             password,
-            hashedPassword: existingUser .password,
+            hashedPassword: existingUser.password,
         });
 
         if (!isPasswordValid) {
             throw new Error('Le mot de passe est incorrecte.');
         }
 
-        // Authentification réussie, générez le token
-        const token = this.authenticateUser ({ 
-          userId: existingUser .id,
+        // Authentification réussie, génération du token JWT
+        const token = this.authenticateUser({ 
+          userId: existingUser.id,
           role: existingUser.role,  
         });
 
-        // Renvoie une réponse avec le token et d'autres informations si nécessaire
+        // Renvoie une réponse avec le token et les informations de l'utilisateur
         return {
             status: 200,
             error: false,
             message: "Connexion réussie !",
             access_token: token.access_token,
             user: {
-                id: existingUser .id,
-                email: existingUser .email,
-                name: existingUser .name,
+                id: existingUser.id,
+                email: existingUser.email,
+                name: existingUser.name,
                 role: existingUser.role,
             },
         };
@@ -65,8 +80,13 @@ export class AuthService {
             message: error.message,
         };
     }
-}
+  }
 
+  /**
+   * Inscrit un nouvel utilisateur dans la base de données
+   * @param registerBody - Objet contenant les informations d'inscription (email, nom, mot de passe)
+   * @returns Un objet contenant le token JWT en cas de succès
+   */
   async register({ registerBody }: { registerBody: CreateUserDto }) {
     try {
       const { email, name, password } = registerBody;
@@ -107,10 +127,21 @@ export class AuthService {
     }
   }
 
+  /**
+   * Hache un mot de passe en clair pour un stockage sécurisé
+   * @param password - Mot de passe en clair
+   * @returns Mot de passe haché
+   */
   private async hashPassword({ password }: { password: string }) {
-    return await hash(password, 10);
+    return await hash(password, 10); // Utilisation de bcrypt avec 10 tours de salage
   }
 
+  /**
+   * Vérifie si un mot de passe en clair correspond à un mot de passe haché
+   * @param password - Mot de passe en clair
+   * @param hashedPassword - Mot de passe haché stocké en base de données
+   * @returns Boolean indiquant si le mot de passe est valide
+   */
   private async isPasswordValid({
     password,
     hashedPassword,
@@ -118,18 +149,29 @@ export class AuthService {
     password: string;
     hashedPassword: string;
   }) {
-    return await compare(password, hashedPassword);
+    return await compare(password, hashedPassword); // Comparaison avec bcrypt
   }
 
+  /**
+   * Génère un token JWT pour l'utilisateur authentifié
+   * @param userId - ID de l'utilisateur
+   * @param role - Rôle de l'utilisateur (ADMIN ou USER)
+   * @returns Objet contenant le token JWT
+   */
   private authenticateUser({ userId, role }: UserPayload) {
     const payload: UserPayload = { userId, role };
     return {
       access_token: this.jwtService.sign(payload),
     };
-}
+  }
 
-async resetUserPasswordRequest({ email }: { email: string; }) {
-  try {
+  /**
+   * Initie le processus de réinitialisation de mot de passe
+   * @param email - Email de l'utilisateur
+   * @returns Message de confirmation ou d'erreur
+   */
+  async resetUserPasswordRequest({ email }: { email: string; }) {
+    try {
       const existingUser = await this.prisma.user.findUnique({
           where: { email },
       });
@@ -179,8 +221,13 @@ async resetUserPasswordRequest({ email }: { email: string; }) {
           message: error.message,
       };
   }
-}
+  }
 
+  /**
+   * Vérifie si un token de réinitialisation de mot de passe est valide
+   * @param token - Token de réinitialisation
+   * @returns Boolean indiquant si le token est valide
+   */
   async verifyResetPasswordToken({ token }: { token: string; }) {
     try {
       const existingUser = await this.prisma.user.findUnique({
@@ -212,6 +259,11 @@ async resetUserPasswordRequest({ email }: { email: string; }) {
     }
   }
 
+  /**
+   * Réinitialise le mot de passe d'un utilisateur
+   * @param resetPasswordDto - Objet contenant le nouveau mot de passe et le token
+   * @returns Message de confirmation ou d'erreur
+   */
   async resetUserPassword({ resetPasswordDto }: { resetPasswordDto: ResetUserPasswordDto; }) {
     try {
       const { password, token } = resetPasswordDto;
@@ -251,6 +303,11 @@ async resetUserPasswordRequest({ email }: { email: string; }) {
     }
   }
 
+  /**
+   * Promeut un utilisateur en administrateur
+   * @param userId - ID de l'utilisateur à promouvoir
+   * @returns Message de confirmation ou d'erreur
+   */
   async promoteToAdmin({ userId }: { userId: string }) {
     try {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -274,6 +331,11 @@ async resetUserPasswordRequest({ email }: { email: string; }) {
     }
   }
 
+  /**
+   * Rétrograde un administrateur en utilisateur normal
+   * @param userId - ID de l'administrateur à rétrograder
+   * @returns Message de confirmation ou d'erreur
+   */
   async demoteFromAdmin({ userId }: { userId: string }) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new Error('Utilisateur non trouvé');

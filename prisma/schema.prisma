@@ -1,53 +1,59 @@
+// Configuration du générateur de client Prisma
 generator client {
   provider = "prisma-client-js"
 }
 
+// Configuration de la base de données PostgreSQL
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL") // URL de connexion définie dans le fichier .env
 }
 
+// Énumération des rôles utilisateur
 enum Role {
-  USER
-  ADMIN
+  USER  // Utilisateur normal
+  ADMIN // Administrateur
 }
 
+// Modèle d'utilisateur
 model User {
-  id                  String  @id @default(cuid())
-  email               String  @unique
-  name                String?
-  password            String
-  role                Role    @default(USER) // Ajout du rôle
-  isResettingPassword Boolean @default(false)
-  resetPasswordToken  String? @unique
-  photo               String? // Champ pour stocker l'URL de la photo de profil
+  id                  String  @id @default(cuid())  // Identifiant unique généré automatiquement
+  email               String  @unique              // Email unique de l'utilisateur
+  name                String?                      // Nom de l'utilisateur (optionnel)
+  password            String                       // Mot de passe haché
+  role                Role    @default(USER)       // Rôle de l'utilisateur (USER par défaut)
+  isResettingPassword Boolean @default(false)      // Indicateur de réinitialisation de mot de passe en cours
+  resetPasswordToken  String? @unique              // Token de réinitialisation de mot de passe (optionnel)
+  photo               String?                      // URL de la photo de profil (optionnel)
 
-  // Relation avec Attendance (un utilisateur peut avoir plusieurs pointages)
+  // Relation avec les pointages (un utilisateur peut avoir plusieurs pointages)
   attendances Attendance[]
 }
 
+// Modèle de pointage
 model Attendance {
-  id         String    @id @default(cuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clockIn    DateTime
-  clockOut   DateTime?
-  latitude   Float     @default(0.0) // Position GPS de l'utilisateur au moment du pointage
-  longitude  Float     @default(0.0) // Position GPS de l'utilisateur au moment du pointage
-  locationId String?   @map("location_id") // Référence au lieu validé (optionnel si hors zone)
-  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  createdAt  DateTime  @default(now())
+  id         String    @id @default(cuid())       // Identifiant unique généré automatiquement
+  userId     String                               // ID de l'utilisateur associé
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade) // Relation avec l'utilisateur (cascade = suppression des pointages si l'utilisateur est supprimé)
+  clockIn    DateTime                             // Date et heure de l'arrivée
+  clockOut   DateTime?                            // Date et heure du départ (optionnel)
+  latitude   Float     @default(0.0)              // Latitude GPS du pointage
+  longitude  Float     @default(0.0)              // Longitude GPS du pointage
+  locationId String?   @map("location_id")        // ID du lieu de pointage (optionnel)
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull) // Relation avec le lieu (SetNull = relation mise à null si le lieu est supprimé)
+  createdAt  DateTime  @default(now())            // Date et heure de création du pointage
 }
 
+// Modèle de lieu de pointage
 model Location {
-  id        String   @id @default(cuid())
-  name      String   @unique // Nom du lieu (ex: "Siège principal")
-  latitude  Float // Latitude du lieu
-  longitude Float // Longitude du lieu
-  radius    Float // Rayon de validation en mètres (ex: 10m, 50m, etc.)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String   @id @default(cuid())         // Identifiant unique généré automatiquement
+  name      String   @unique                      // Nom unique du lieu
+  latitude  Float                                 // Latitude GPS du lieu
+  longitude Float                                 // Longitude GPS du lieu
+  radius    Float                                 // Rayon de validation en mètres
+  createdAt DateTime @default(now())              // Date et heure de création du lieu
+  updatedAt DateTime @updatedAt                   // Date et heure de dernière mise à jour du lieu
 
-  // Relation avec Attendance (un lieu peut avoir plusieurs pointages associés)
+  // Relation avec les pointages (un lieu peut avoir plusieurs pointages associés)
   attendances Attendance[]
 }
