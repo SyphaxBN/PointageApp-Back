@@ -20,7 +20,7 @@ export class UserService {
 
   /**
    * Récupère tous les utilisateurs (sans informations sensibles)
-   * @returns Liste des utilisateurs avec leurs informations de base
+   * @returns Liste des utilisateurs avec leurs informations de base, leur rôle et leur date de création
    */
   async getUsers() {
     const users = await this.prisma.user.findMany({
@@ -28,9 +28,21 @@ export class UserService {
         id: true,
         email: true,
         name: true,
+        role: true,      // Ajout du rôle de l'utilisateur
+        photo: true,     // Ajout de la photo pour le tableau de bord admin
+        createdAt: true, // Ajout de la date de création
       },
     });
-    return users;
+    
+    // Formater les dates de création pour une meilleure lisibilité
+    return users.map(user => ({
+      ...user,
+      createdAt: user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }) : null
+    }));
   }
 
   /**

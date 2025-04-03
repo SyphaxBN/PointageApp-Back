@@ -17,15 +17,16 @@ enum Role {
 
 // Modèle d'utilisateur
 model User {
-  id                  String  @id @default(cuid())  // Identifiant unique généré automatiquement
-  email               String  @unique              // Email unique de l'utilisateur
-  name                String?                      // Nom de l'utilisateur (optionnel)
-  password            String                       // Mot de passe haché
-  role                Role    @default(USER)       // Rôle de l'utilisateur (USER par défaut)
-  isResettingPassword Boolean @default(false)      // Indicateur de réinitialisation de mot de passe en cours
-  resetPasswordToken  String? @unique              // Token de réinitialisation de mot de passe (optionnel)
-  photo               String?                      // URL de la photo de profil (optionnel)
-
+  id                  String    @id @default(cuid())  // Identifiant unique généré automatiquement
+  email               String    @unique              // Email unique de l'utilisateur
+  name                String?                        // Nom de l'utilisateur (optionnel)
+  password            String                         // Mot de passe haché
+  role                Role      @default(USER)       // Rôle de l'utilisateur (USER par défaut)
+  isResettingPassword Boolean   @default(false)      // Indicateur de réinitialisation de mot de passe en cours
+  resetPasswordToken  String?   @unique              // Token de réinitialisation de mot de passe (optionnel)
+  photo               String?                        // URL de la photo de profil (optionnel)
+  createdAt           DateTime  @default(now())      // Ajouter cette ligne
+  
   // Relation avec les pointages (un utilisateur peut avoir plusieurs pointages)
   attendances Attendance[]
 }
