@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
@@ -60,11 +61,42 @@ export class AttendanceService {
   }
 
   /**
-   * Récupère la liste de tous les lieux de pointage
-   * @returns Liste des lieux de pointage
+   * Récupère la liste de tous les lieux de pointage avec statistiques
+   * @returns Liste des lieux de pointage avec le nombre de pointages pour chacun
    */
   async getLocations() {
-    return this.prisma.location.findMany();
+    // Récupère tous les lieux avec des informations détaillées
+    const locations = await this.prisma.location.findMany({
+      include: {
+        // Inclure la relation avec les pointages pour pouvoir les compter
+        attendances: true,
+      }
+    });
+
+    // Transforme les données pour inclure les statistiques de pointage
+    return locations.map(location => {
+      // Formate la date de création pour l'affichage
+      const createdAtFormatted = new Date(location.createdAt).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+
+      // Prépare l'objet de réponse avec toutes les informations nécessaires
+      return {
+        id: location.id,
+        name: location.name,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        radius: location.radius,
+        dateAjout: createdAtFormatted,
+        // Compte le nombre total de pointages pour ce lieu
+        stats: {
+          totalPointages: location.attendances.length,
+          label: 'pointages'
+        }
+      };
+    });
   }
 
   /**
@@ -402,5 +434,57 @@ export class AttendanceService {
       latitude: lastAttendance.latitude,
       longitude: lastAttendance.longitude,
     };
+  }
+
+  /**
+   * Récupère le nombre total de pointages pour aujourd'hui
+   * @returns Nombre total de pointages effectués aujourd'hui
+   */
+  async getTodayAttendanceCount() {
+    try {
+      // Création des limites pour aujourd'hui
+      const today = new Date();
+      const startOfDay = new Date(today);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Récupération des pointages pour aujourd'hui en une seule requête
+      const todayAttendances = await this.prisma.attendance.findMany({
+        where: {
+          clockIn: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        },
+        select: {
+          id: true,
+          clockOut: true,
+        },
+      });
+
+      // Calcul des statistiques à partir des données récupérées
+      const totalCount = todayAttendances.length;
+      const completedCount = todayAttendances.filter(a => a.clockOut !== null).length;
+      const inProgressCount = totalCount - completedCount;
+
+      return {
+        total: totalCount,
+        label: 'Pointages aujourd\'hui',
+        details: {
+          completed: {
+            count: completedCount,
+            label: 'Pointages terminés',
+          },
+          inProgress: {
+            count: inProgressCount,
+            label: 'Pointages en cours',
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Erreur lors du comptage des pointages:', error);
+      throw new InternalServerErrorException('Erreur lors du comptage des pointages');
+    }
   }
 }

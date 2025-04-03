@@ -115,4 +115,33 @@ export class UserService {
       data: { photo: photoUrl },
     });
   }
+
+  /**
+   * Récupère les statistiques des utilisateurs (nombre total et par rôle)
+   * @returns Objet contenant les statistiques des utilisateurs
+   */
+  async getUsersStats() {
+    // Récupère le nombre total d'utilisateurs
+    const totalUsers = await this.prisma.user.count();
+    
+    // Récupère le nombre d'administrateurs
+    const totalAdmins = await this.prisma.user.count({
+      where: { role: 'ADMIN' }
+    });
+    
+    // Calcule le nombre d'utilisateurs standard (non-admin)
+    const totalEmployees = totalUsers - totalAdmins;
+    
+    return {
+      employees: {
+        count: totalEmployees,
+        label: 'Employés'
+      },
+      administrators: {
+        count: totalAdmins,
+        label: 'Administrateurs'
+      },
+      total: totalUsers
+    };
+  }
 }

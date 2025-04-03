@@ -122,15 +122,26 @@ export class AuthController {
   }
 
   /**
-   * Endpoint de test pour vérifier les permissions administrateur
-   * Route: GET /auth/admin-only
-   * @returns Message de bienvenue
-   * @requires Authentication, Role: ADMIN
+   * Endpoint pour l'authentification des administrateurs (dashboard admin)
+   * Route: POST /auth/admin-login
+   * @param authBody - Objet contenant l'email et le mot de passe
+   * @returns Objet contenant le token JWT et les informations de l'administrateur
+   * @throws Error si l'utilisateur n'a pas le rôle ADMIN
    */
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @Get('admin-only')
-  async adminRoute() {
-    return { message: "Bienvenue Admin !" };
+  @Post('admin-login')
+  async adminLogin(@Body() authBody: LogUserDto) {
+    const loginResult = await this.authService.login({ authBody });
+    
+    // Vérifie si la connexion a réussi et si l'utilisateur est un administrateur
+    if (loginResult.error === false && loginResult.user && loginResult.user.role === 'ADMIN') {
+      return loginResult;
+    }
+    
+    // Si l'utilisateur n'est pas un administrateur ou si la connexion a échoué
+    return {
+      status: 403,
+      error: true,
+      message: "Accès interdit. Cette interface est réservée aux administrateurs.",
+    };
   }
 }

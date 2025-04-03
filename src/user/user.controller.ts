@@ -45,31 +45,16 @@ export class UserController {
   }
 
   /**
-   * Endpoint pour récupérer un utilisateur par son ID
-   * Route: GET /users/:userId
-   * @param userId - ID de l'utilisateur à récupérer
-   * @returns Informations de l'utilisateur (sans mot de passe)
+   * Endpoint pour récupérer les statistiques des utilisateurs
+   * Route: GET /users/stats
+   * @returns Statistiques sur le nombre d'utilisateurs par rôle
    * @requires Authentication, Role: ADMIN
    */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  @Get('/:userId')
-  getUser(@Param('userId') userId: string) {
-    return this.userService.getUser({ userId });
-  }
-
-  /**
-   * Endpoint pour supprimer un utilisateur
-   * Route: DELETE /users/:userId
-   * @param userId - ID de l'utilisateur à supprimer
-   * @returns Message de confirmation
-   * @requires Authentication, Role: ADMIN
-   */
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @Delete('/:userId')
-  deleteUser(@Param('userId') userId: string) {
-    return this.userService.deleteUser(userId);
+  @Get('stats')
+  async getUsersStats() {
+    return this.userService.getUsersStats();
   }
 
   /**
@@ -129,5 +114,33 @@ export class UserController {
       message: '✅ Photo de profil mise à jour avec succès !',
       imageUrl: imagePath,
     };
+  }
+
+  /**
+   * Endpoint pour récupérer un utilisateur par son ID
+   * Route: GET /users/:userId
+   * @param userId - ID de l'utilisateur à récupérer
+   * @returns Informations de l'utilisateur (sans mot de passe)
+   * @requires Authentication, Role: ADMIN
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get(':userId')
+  getUser(@Param('userId') userId: string) {
+    return this.userService.getUser({ userId });
+  }
+
+  /**
+   * Endpoint pour supprimer un utilisateur
+   * Route: DELETE /users/:userId
+   * @param userId - ID de l'utilisateur à supprimer
+   * @returns Message de confirmation
+   * @requires Authentication, Role: ADMIN
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Delete(':userId')
+  deleteUser(@Param('userId') userId: string) {
+    return this.userService.deleteUser(userId);
   }
 }

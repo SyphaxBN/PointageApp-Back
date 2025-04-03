@@ -203,4 +203,17 @@ export class AttendanceController {
     console.log('📥 Demande de dernier pointage pour user:', req.user);
     return this.attendanceService.getLastAttendance(req.user.userId);
   }
+
+  /**
+   * Endpoint pour récupérer le nombre de pointages d'aujourd'hui
+   * Route: GET /attendance/today-count
+   * @returns Nombre total de pointages effectués aujourd'hui
+   * @requires Authentication, Role: ADMIN
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('today-count')
+  async getTodayAttendanceCount() {
+    return this.attendanceService.getTodayAttendanceCount();
+  }
 }
