@@ -341,6 +341,9 @@ export class AttendanceService {
         attendances: {
           where: filter,
           orderBy: { clockIn: 'desc' },
+          include: {
+            location: true, // Inclure les informations du lieu
+          },
         },
       },
       omit: {
@@ -354,6 +357,7 @@ export class AttendanceService {
     return users.map((user) => ({
       ...user,
       attendances: user.attendances.map((attendance) => ({
+        id: attendance.id,
         clockInDate: attendance.clockIn.toISOString().split('T')[0], // YYYY-MM-DD
         clockInTime: attendance.clockIn.toISOString().split('T')[1].slice(0, 5), // HH:MM
         clockOutDate: attendance.clockOut
@@ -362,6 +366,11 @@ export class AttendanceService {
         clockOutTime: attendance.clockOut
           ? attendance.clockOut.toISOString().split('T')[1].slice(0, 5)
           : null, // HH:MM
+        location: attendance.location?.name || 'Hors zone', // Ajout du nom du lieu
+        coordinates: { // Coordonnées GPS du pointage
+          latitude: attendance.latitude,
+          longitude: attendance.longitude,
+        },
       })),
     }));
   }
