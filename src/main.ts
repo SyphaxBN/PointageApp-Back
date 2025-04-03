@@ -36,9 +36,12 @@ async function bootstrap() {
   });
 
   // Activation du Cross-Origin Resource Sharing (CORS)
-  // Permet aux clients web (frontend) de communiquer avec l'API
+  // Permet aux clients web (frontend) et à l'application mobile de communiquer avec l'API
   // même s'ils sont hébergés sur des domaines différents
-  app.enableCors(); 
+  app.enableCors({
+    origin: true, // Accepte toutes les origines (application mobile et dashboard admin)
+    credentials: true, // Permet l'utilisation des cookies et de l'authentification
+  });
 
   // Démarrage du serveur HTTP
   // Écoute sur le port défini dans les variables d'environnement ou 8000 par défaut

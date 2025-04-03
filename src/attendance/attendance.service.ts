@@ -487,4 +487,66 @@ export class AttendanceService {
       throw new InternalServerErrorException('Erreur lors du comptage des pointages');
     }
   }
+
+  /**
+   * Récupère les derniers pointages avec des informations détaillées
+   * @param limit - Nombre de pointages à récupérer (par défaut 5)
+   * @returns Liste des derniers pointages avec nom d'utilisateur, lieu et horodatage
+   */
+  async getRecentAttendances(limit: number = 5) {
+    try {
+      // Récupère les derniers pointages avec les relations utilisateur et lieu
+      const recentAttendances = await this.prisma.attendance.findMany({
+        take: limit,
+        orderBy: {
+          clockIn: 'desc'
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              photo: true
+            }
+          },
+          location: true
+        }
+      });
+
+      // Transforme les données pour un format plus adapté à l'affichage
+      return {
+        attendances: recentAttendances.map(attendance => ({
+          id: attendance.id,
+          userName: attendance.user.name,
+          userPhoto: attendance.user.photo,
+          location: attendance.location?.name || 'Hors zone',
+          // Formate les dates pour l'affichage
+          clockIn: this.formatDate(attendance.clockIn),
+          clockOut: this.formatDate(attendance.clockOut),
+          // Indique si le pointage est terminé (avec départ) ou en cours
+          status: attendance.clockOut ? 'Terminé' : 'En cours',
+          // Calcule la durée si le pointage est terminé
+          duration: attendance.clockOut 
+            ? this.calculateDuration(attendance.clockIn, attendance.clockOut)
+            : null
+        }))
+      };
+    } catch (error) {
+      console.error('Erreur lors de la récupération des derniers pointages:', error);
+      throw new InternalServerErrorException('Erreur lors de la récupération des derniers pointages');
+    }
+  }
+
+  /**
+   * Calcule la durée entre deux dates et la formate en heures et minutes
+   * @param start - Date de début
+   * @param end - Date de fin
+   * @returns Durée formatée en heures et minutes
+   */
+  private calculateDuration(start: Date, end: Date): string {
+    const durationMs = end.getTime() - start.getTime();
+    const hours = Math.floor(durationMs / (1000 * 60 * 60));
+    const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return `${hours}h ${minutes}min`;
+  }
 }

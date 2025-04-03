@@ -216,4 +216,19 @@ export class AttendanceController {
   async getTodayAttendanceCount() {
     return this.attendanceService.getTodayAttendanceCount();
   }
+
+  /**
+   * Endpoint pour récupérer les derniers pointages
+   * Route: GET /attendance/recent
+   * @param limit - Nombre de pointages à récupérer (optionnel, par défaut 5)
+   * @returns Liste des derniers pointages avec détails
+   * @requires Authentication, Role: ADMIN
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('recent')
+  async getRecentAttendances(@Query('limit') limit?: string) {
+    const limitNum = limit ? parseInt(limit, 10) : 5;
+    return this.attendanceService.getRecentAttendances(limitNum);
+  }
 }
