@@ -6,6 +6,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
+// Exportez l'interface pour qu'elle soit accessible depuis d'autres fichiers
+export interface DayData {
+  date: string;
+  total: number;
+  completed: number;
+  inProgress: number;
+}
+
 /**
  * Service de gestion des présences (pointages)
  * Gère l'ensemble des opérations liées aux pointages et aux lieux de pointage:
@@ -557,5 +565,213 @@ export class AttendanceService {
     const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
     
     return `${hours}h ${minutes}min`;
+  }
+
+  /**
+   * Récupère les pointages d'aujourd'hui avec toutes les informations des utilisateurs
+   * @returns Liste détaillée des pointages d'aujourd'hui avec infos utilisateurs
+   */
+  async getTodayAttendancesWithUserDetails() {
+    try {
+      // Création des limites pour aujourd'hui
+      const today = new Date();
+      const startOfDay = new Date(today);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Récupère tous les pointages d'aujourd'hui avec les détails utilisateur et lieu
+      const todayAttendances = await this.prisma.attendance.findMany({
+        where: {
+          clockIn: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        },
+        orderBy: {
+          clockIn: 'desc', // Du plus récent au plus ancien
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              photo: true,
+              role: true,
+              createdAt: true,
+            }
+          },
+          location: true,
+        }
+      });
+
+      // Transforme les données pour un format plus adapté à l'affichage
+      return {
+        count: todayAttendances.length,
+        attendances: todayAttendances.map(attendance => ({
+          id: attendance.id,
+          user: {
+            id: attendance.user.id,
+            name: attendance.user.name,
+            email: attendance.user.email,
+            photo: attendance.user.photo,
+            role: attendance.user.role,
+            inscription: attendance.user.createdAt 
+              ? new Date(attendance.user.createdAt).toLocaleDateString('fr-FR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric'
+                })
+              : null,
+          },
+          location: attendance.location?.name || 'Hors zone',
+          clockIn: this.formatDate(attendance.clockIn),
+          clockOut: this.formatDate(attendance.clockOut),
+          status: attendance.clockOut ? 'Terminé' : 'En cours',
+          duration: attendance.clockOut 
+            ? this.calculateDuration(attendance.clockIn, attendance.clockOut)
+            : null,
+          coordinates: {
+            latitude: attendance.latitude,
+            longitude: attendance.longitude,
+          }
+        }))
+      };
+    } catch (error) {
+      console.error('Erreur lors de la récupération des pointages du jour:', error);
+      throw new InternalServerErrorException('Erreur lors de la récupération des pointages du jour');
+    }
+  }
+
+  /**
+   * Récupère les statistiques de pointage pour les 7 derniers jours
+   * Ne compte qu'un seul pointage par utilisateur par jour
+   * @returns Données structurées pour un graphique de pointages hebdomadaire
+   */
+  async getWeeklyAttendanceStats() {
+    try {
+      // Définition de la plage de dates (7 derniers jours)
+      const today = new Date();
+      const endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+      
+      const startDate = new Date(today);
+      startDate.setDate(today.getDate() - 6); // 6 jours avant aujourd'hui (total 7 jours)
+      startDate.setHours(0, 0, 0, 0);
+
+      // Récupération de tous les pointages de la semaine avec userId pour identifier les utilisateurs uniques
+      const weeklyAttendances = await this.prisma.attendance.findMany({
+        where: {
+          clockIn: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        select: {
+          userId: true,
+          clockIn: true,
+          clockOut: true,
+        }
+      });
+
+      // Préparation de la structure pour les 7 derniers jours
+      const days: DayData[] = [];
+      const labels: string[] = [];
+      const counts: number[] = [];
+      
+      // Génération des données pour chaque jour de la semaine
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - (6 - i)); // Du jour le plus ancien au plus récent
+        
+        // Date au format ISO pour comparaison
+        const dayStart = new Date(date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(date);
+        dayEnd.setHours(23, 59, 59, 999);
+        
+        // Format de date localisé pour l'affichage
+        const formattedDate = date.toLocaleDateString('fr-FR', {
+          weekday: 'short', // Lun, Mar, etc.
+          day: '2-digit',
+          month: '2-digit'
+        });
+        
+        // Filtrage des pointages pour cette journée
+        const dailyAttendances = weeklyAttendances.filter(attendance => {
+          const clockInDate = new Date(attendance.clockIn);
+          return clockInDate >= dayStart && clockInDate <= dayEnd;
+        });
+        
+        // Extrait les utilisateurs uniques qui ont pointé ce jour-là
+        const uniqueUserIds = new Set(dailyAttendances.map(a => a.userId));
+        const uniqueCount = uniqueUserIds.size;
+        
+        // Comptage des pointages complétés et en cours (par utilisateurs uniques)
+        const usersWithCompletedAttendance = new Set();
+        const usersWithInProgressAttendance = new Set();
+        
+        dailyAttendances.forEach(attendance => {
+          if (attendance.clockOut) {
+            usersWithCompletedAttendance.add(attendance.userId);
+          } else {
+            usersWithInProgressAttendance.add(attendance.userId);
+          }
+        });
+        
+        // Si un utilisateur a un pointage terminé et un en cours, il est compté comme "ayant terminé"
+        const completedUniqueCount = usersWithCompletedAttendance.size;
+        const inProgressUniqueCount = uniqueCount - completedUniqueCount;
+        
+        // Stockage des données pour ce jour
+        days.push({
+          date: formattedDate,
+          total: uniqueCount,
+          completed: completedUniqueCount,
+          inProgress: inProgressUniqueCount
+        });
+        
+        // Préparation des données pour un format adapté aux graphiques
+        labels.push(formattedDate);
+        counts.push(uniqueCount);
+      }
+
+      // Calcul des statistiques globales pour la semaine (utilisateurs uniques sur toute la semaine)
+      const uniqueUsersInWeek = new Set(weeklyAttendances.map(a => a.userId));
+      const totalUniqueUsers = uniqueUsersInWeek.size;
+      
+      // Utilisateurs ayant au moins un pointage complet dans la semaine
+      const usersWithCompletedAttendanceInWeek = new Set(
+        weeklyAttendances
+          .filter(a => a.clockOut !== null)
+          .map(a => a.userId)
+      );
+      const completedUniqueUsersCount = usersWithCompletedAttendanceInWeek.size;
+      const inProgressUniqueUsersCount = totalUniqueUsers - completedUniqueUsersCount;
+      
+      // Renvoie des données structurées pour un graphique
+      return {
+        totalWeek: totalUniqueUsers,
+        summary: {
+          completed: completedUniqueUsersCount,
+          inProgress: inProgressUniqueUsersCount
+        },
+        dailyData: days,
+        // Format adapté pour les bibliothèques de graphiques (ChartJS, etc.)
+        chart: {
+          labels,
+          datasets: [
+            {
+              label: 'Utilisateurs ayant pointé',
+              data: counts
+            }
+          ]
+        }
+      };
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques hebdomadaires:', error);
+      throw new InternalServerErrorException('Erreur lors de la récupération des statistiques hebdomadaires');
+    }
   }
 }

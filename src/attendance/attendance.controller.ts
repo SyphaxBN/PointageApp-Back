@@ -231,4 +231,30 @@ export class AttendanceController {
     const limitNum = limit ? parseInt(limit, 10) : 5;
     return this.attendanceService.getRecentAttendances(limitNum);
   }
+
+  /**
+   * Endpoint pour récupérer les pointages d'aujourd'hui avec détails utilisateurs
+   * Route: GET /attendance/today-details
+   * @returns Liste des pointages d'aujourd'hui avec informations complètes des utilisateurs
+   * @requires Authentication, Role: ADMIN
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('today-details')
+  async getTodayAttendancesWithUserDetails() {
+    return this.attendanceService.getTodayAttendancesWithUserDetails();
+  }
+
+  /**
+   * Endpoint pour récupérer les statistiques de pointage de la dernière semaine
+   * Route: GET /attendance/weekly-stats
+   * @returns Statistiques de pointage pour les 7 derniers jours (format adapté aux graphiques)
+   * @requires Authentication, Role: ADMIN
+   */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('weekly-stats')
+  async getWeeklyAttendanceStats() {
+    return this.attendanceService.getWeeklyAttendanceStats();
+  }
 }
