@@ -71,6 +71,7 @@ export class AuthService {
                 email: existingUser.email,
                 name: existingUser.name,
                 role: existingUser.role,
+                photo: existingUser.photo, // Ajout de la photo de profil
             },
         };
     } catch (error) {
