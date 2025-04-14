@@ -68,20 +68,27 @@ export class MailerService {
     token: string;
   }) {
     try {
-      const link = `${token}`;
       const mailOptions = {
         from: `"Pointage App" <${process.env.EMAIL_USER}>`,
         to: recipient,
         subject: 'Réinitialisation de votre mot de passe',
-        html: `<p>Bonjour <strong>${name}</strong>,</p>
-               <p>Voici votre token pour réinitialiser votre mot de passe :</p>
-               <a href="${link}">${link}</a>`,
+        html: `
+        <p>Bonjour <strong>${name}</strong>,</p>
+        <p>Vous avez demandé une réinitialisation de votre mot de passe.</p>
+        <p>Voici votre code de réinitialisation :</p>
+        <div style="background-color: #f0f0f0; padding: 10px; border-radius: 5px; margin: 15px 0; font-family: monospace; font-size: 18px;">
+          ${token}
+        </div>
+        <p>Copiez ce code et collez-le dans l'application pour continuer la procédure de réinitialisation.</p>
+        <p>Si vous n'êtes pas à l'origine de cette demande, veuillez ignorer cet email.</p>
+        <p>Cordialement,<br>L'équipe Pointage App</p>
+      `,
       };
 
       const info = await this.transporter.sendMail(mailOptions);
       console.log('Email envoyé:', info.response);
     } catch (error) {
-      console.error('Erreur lors de l’envoi de l’email:', error);
+      console.error("Erreur lors de l'envoi de l'email:", error);
     }
   }
 }
