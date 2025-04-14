@@ -56,6 +56,7 @@ export class AttendanceService {
    * @param longitude - Longitude GPS du lieu
    * @param radius - Rayon en mètres dans lequel le pointage est autorisé
    * @returns Le lieu créé
+   * @throws BadRequestException si un lieu avec le même nom existe déjà
    */
   async createLocation(
     name: string,
@@ -63,6 +64,17 @@ export class AttendanceService {
     longitude: number,
     radius: number,
   ) {
+    // Vérifier si un lieu avec le même nom existe déjà
+    const existingLocation = await this.prisma.location.findUnique({
+      where: { name }
+    });
+
+    // Si un lieu avec ce nom existe déjà, renvoyer une erreur
+    if (existingLocation) {
+      throw new BadRequestException(`Un lieu nommé "${name}" existe déjà.`);
+    }
+
+    // Si le nom est unique, créer le nouveau lieu
     return this.prisma.location.create({
       data: { name, latitude, longitude, radius },
     });
@@ -128,6 +140,8 @@ export class AttendanceService {
    * @param locationId - ID du lieu à modifier
    * @param data - Nouvelles informations du lieu
    * @returns Message de confirmation et lieu mis à jour
+   * @throws NotFoundException si le lieu n'existe pas
+   * @throws BadRequestException si le nouveau nom existe déjà pour un autre lieu
    */
   async updateLocation(
     locationId: string,
@@ -138,6 +152,7 @@ export class AttendanceService {
       radius?: number;
     },
   ) {
+    // Vérifie si le lieu à modifier existe
     const location = await this.prisma.location.findUnique({
       where: { id: locationId },
     });
@@ -146,6 +161,21 @@ export class AttendanceService {
       throw new NotFoundException('Lieu non trouvé.');
     }
 
+    // Si un nouveau nom est fourni, vérifie s'il existe déjà sur un autre lieu
+    if (data.name && data.name !== location.name) {
+      const existingLocationWithSameName = await this.prisma.location.findFirst({
+        where: {
+          name: data.name,
+          id: { not: locationId } // Exclut le lieu en cours de modification
+        },
+      });
+
+      if (existingLocationWithSameName) {
+        throw new BadRequestException(`Un lieu nommé "${data.name}" existe déjà.`);
+      }
+    }
+
+    // Si le nom est unique ou inchangé, procède à la mise à jour
     const updatedLocation = await this.prisma.location.update({
       where: { id: locationId },
       data,
