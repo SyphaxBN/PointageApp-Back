@@ -41,8 +41,21 @@ export class MailerService {
       const mailOptions = {
         from: `"Pointage App" <${process.env.EMAIL_USER}>`,
         to: recipient,
-        subject: 'Bienvenue dans la plateforme',
-        html: `<p>Bonjour <strong>${name}</strong>, bienvenue dans NestJS !</p>`,
+        subject: 'Bienvenue sur la plateforme Pointage App',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #4a86e8; padding: 20px; color: white; text-align: center;">
+          <h1>Bienvenue sur Pointage App</h1>
+        </div>
+        <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none;">
+          <p>Bonjour <strong>${name}</strong>,</p>
+          <p>Nous avons le plaisir de vous confirmer que votre compte a été créé avec succès.</p>
+          <p>Vous pouvez dès à présent vous connecter à notre plateforme et commencer à l'utiliser.</p>
+          <p>Nous vous souhaitons une excellente expérience sur notre application.</p>
+          <p>Cordialement,<br>L'équipe Pointage App</p>
+        </div>
+          </div>
+        `,
       };
 
       const info = await this.transporter.sendMail(mailOptions);
